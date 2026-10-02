@@ -1,11 +1,14 @@
 *------------------------------------------------------------------------------
-* 03_plot_net_positions_de.do
-* Net positions in German sovereign bond futures: hedge funds, and non euro area
-* dealers, MFIs and OFIs. Reads lab_prj_emir_ecb.hermesf_fut via ODBC.
+* 03_plots.do
+* Plots based on lab_prj_emir_ecb.hermesf_fut, read via ODBC.
 *------------------------------------------------------------------------------
 
 	global path "C:\Users\hermesf\Projects\Future_FX_cleaning"
-	global dsn  "DEVO Impala 64bit"
+	global dsn  "Hermes_DSN"
+
+*------------------------------------------------------------------------------
+* 1. Net positions in German futures: hedge funds, non euro area dealers, MFIs, OFIs
+*------------------------------------------------------------------------------
 
 * net by day, sector and counterparty country, German contracts only
 	#delimit ;
