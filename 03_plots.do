@@ -7,7 +7,7 @@
 	global dsn  "Hermes_DSN"
 
 *------------------------------------------------------------------------------
-* 1. Net positions in German futures: hedge funds, non euro area dealers, MFIs, OFIs
+* 1. Net positions in German futures: EA and non EA hedge funds, non euro area dealers, MFIs, OFIs
 *------------------------------------------------------------------------------
 
 * net by day, sector and counterparty country, German contracts only
@@ -41,7 +41,8 @@
 
 * groups to plot
 	gen group = ""
-	replace group = "hf"           if sector == "HF"
+	replace group = "hf_ea"        if sector == "HF"     &  isea
+	replace group = "hf_nonea"     if sector == "HF"     & !isea
 	replace group = "dealer_nonea" if sector == "DEALER" & !isea
 	replace group = "mfi_nonea"    if sector == "MFI"    & !isea
 	replace group = "ofi_nonea"    if sector == "OFI"    & !isea
@@ -59,7 +60,7 @@
 	sort date
 
 * combined line of the four groups
-	egen nettotal = rowtotal(nethf netdealer_nonea netmfi_nonea netofi_nonea), missing
+	egen nettotal = rowtotal(nethf_ea nethf_nonea netdealer_nonea netmfi_nonea netofi_nonea), missing
 
 * x axis as a running day index, so the excluded window collapses to a single step
 	gen t = _n
@@ -75,12 +76,13 @@
 	local gap_end = r(min)
 
 * plot, dashed vertical lines mark the excluded REFIT transition window
-	twoway (line nethf           t, cmissing(n)) ///
+	twoway (line nethf_ea        t, cmissing(n)) ///
+		   (line nethf_nonea     t, cmissing(n)) ///
 		   (line netdealer_nonea t, cmissing(n)) ///
 		   (line netmfi_nonea    t, cmissing(n)) ///
 		   (line netofi_nonea    t, cmissing(n)) ///
 		   (line nettotal        t, cmissing(n) lcolor(black) lwidth(medthick)), ///
-		legend(order(1 "Hedge funds" 2 "Non-EA dealers" 3 "Non-EA MFIs" 4 "Non-EA OFIs" 5 "Combined") rows(1) position(6)) ///
+		legend(order(1 "EA hedge funds" 2 "Non-EA hedge funds" 3 "Non-EA dealers" 4 "Non-EA MFIs" 5 "Non-EA OFIs" 6 "Combined") rows(2) position(6)) ///
 		ytitle("Net position, EUR bn") xtitle("") yline(0, lcolor(gs10)) ///
 		xlabel(`xlab') xline(`gap_start' `gap_end', lpattern(dash) lcolor(gs8)) ///
 		title("Net positions in German sovereign bond futures")
