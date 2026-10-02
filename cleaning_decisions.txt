@@ -1,0 +1,67 @@
+Sovereign bond futures from EMIR, decisions
+===========================================
+
+Table: lab_prj_emir_ecb.hermesf_fut, built by 02_creating_table.ipynb.
+One row per trade state and reporting day, pre-REFIT and REFIT stacked.
+
+Scope
+-----
+- Dates: pre-REFIT 2018-01-01 to 2024-04-26, REFIT 2025-01-01 to 2026-09-01.
+  The REFIT transition window (2024-04-29 to 2024-12-31) is excluded. Positions were
+  not carried over properly at the go live and only disappeared as contracts expired.
+- Euro area: Eurex sovereign futures identified by ISIN (gov_fut.csv, built from the
+  Eurex contract list by 01_gov_futures_list.do). Products FGBS, FGBM, FGBL, FGBX (DE),
+  FBTS, FBTM, FBTP (IT), FOAM, FOAT (FR), FBON (ES). Interest rate futures excluded.
+- US: CBOT Treasury futures. No contract ISIN exists for third country venues and the
+  ISIN and UPI fields are empty or junk, so contracts are identified by venue XCBT,
+  contract type FUTR, asset class INTR, CFI FFDPSX and currency USD. product_id is
+  synthetic (XCBT_FFDPSX_ plus expiry), expiration_date is the EMIR maturity date.
+  The tenor (2y, 5y, 10y, bond) cannot be identified reliably and is not attempted.
+- Filters inherited from the colleague's query: direction BYER or SLLR, notional
+  strictly positive and at most 1e11. Asset class, contract type, CFI and currency
+  filters are not needed for the euro area side, the ISIN list implies them.
+- Not used: LEI type filter (all IDs are LEIs), clearing member classification,
+  parent entities, lifecycle fields (action type, event type, level, timestamps).
+
+Counterparties
+--------------
+- Reporter and other counterparty are reallocated to buyer and seller using the
+  direction field. Direction is BYER or SLLR in both regimes.
+- Sector from xlab_ecb_prj_sftds_cb_common.pth_sector. The three Eurex LEIs are
+  overridden to sector CCP. No other CCP list.
+- Country from the GLEIF country code fields.
+
+Trade terms
+-----------
+- notional, notional_currency, price, quantity from the leg1 fields.
+  Price currency and price multiplier are dropped, they are null in most rows.
+  quantity is field 2.60 (total notional quantity of leg 1), which is the ETD
+  quantity field under REFIT. It is null in about 16 percent of rows.
+- leg1 fields are used throughout. The best_ fields are only marginally better
+  populated and leg2 is mostly empty.
+
+Cleaning rules (applied inside the queries)
+-------------------------------------------
+1. Expiry cut off. Rows reported more than 10 days after the contract's expiration
+   date are dropped. Millions of stale positions were never terminated.
+2. Price normalisation. Price is brought to a per 100 quotation by dividing by 10,
+   100 or 1,000 when above 250, and only kept if between 50 and 250. Where the own
+   price is missing or invalid, a reference price is used, the average normalised
+   price of all reporters for the same contract and day.
+3. Notional rebuild. Where notional / (quantity x price) > 3000 the notional is
+   replaced by quantity x 1000 x price (quantity treated as contracts of 100k face).
+   Correct reports sit at 1000 (quantity in contracts) or 1 (quantity in units of
+   100 face). Several reporters inflate notional by 100 to 1,000,000.
+   Rows without quantity keep the reported notional.
+4. Cap. Rows with more than 500,000 implied contracts (notional / (price x 1000))
+   are dropped. 28 such rows carried 1.7 tn of notional, none involving the CCP.
+   Rows between 100k and 500k contracts are kept, they are consistent with clearing
+   members' omnibus positions.
+- Raw values are kept as notional_raw and price_raw for traceability.
+
+Known remaining issues
+----------------------
+- Single large positions appear and vanish (e.g. ES 2023, FR and IT 2025), to be
+  handled case by case.
+- Level shift at the REFIT restart in January 2025.
+- The CCP net position is not exactly flat. Not investigated.
