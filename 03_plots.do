@@ -8,14 +8,15 @@
 
 *------------------------------------------------------------------------------
 * Program: net position chart for one country and a list of sector groups
-*   groups: hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea ucits
+*   groups: hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea ucits icpf
 *   total:  groups summed into the combined line (default: all plotted groups)
-*   usage:  plot_net DE, groups(hf_ea hf_nonea ucits) total(hf_ea hf_nonea) suffix(_x)
+*   total2: groups summed into a second combined line (optional)
+*   usage:  plot_net DE, groups(hf_ea hf_nonea ucits) total(hf_ea hf_nonea) total2(ucits) suffix(_x)
 *------------------------------------------------------------------------------
 
 	capture program drop plot_net
 	program define plot_net
-		syntax anything(name=c), groups(string) [total(string) suffix(string)]
+		syntax anything(name=c), groups(string) [total(string) total2(string) suffix(string)]
 		if "`total'" == "" local total "`groups'"
 
 		if "`c'" == "US" local ccy "USD"
@@ -37,7 +38,7 @@
 				FROM lab_prj_emir_ecb.hermesf_fut
 				WHERE product_country = '`c''
 			) x
-			WHERE sector IN ('HF', 'DEALER', 'MFI', 'OFI', 'UCITS')
+			WHERE sector IN ('HF', 'DEALER', 'MFI', 'OFI', 'UCITS', 'ICPF')
 			GROUP BY reference_period, sector, country
 		") ;
 		#delimit cr
@@ -61,6 +62,7 @@
 		replace group = "mfi_nonea"    if sector == "MFI"    & !isea
 		replace group = "ofi_nonea"    if sector == "OFI"    & !isea
 		replace group = "ucits"        if sector == "UCITS"
+		replace group = "icpf"         if sector == "ICPF"
 		drop if group == ""
 
 		collapse (sum) net, by(date group)
@@ -84,6 +86,13 @@
 			local vars "`vars' net`g'"
 		}
 		egen nettotal = rowtotal(`vars'), missing
+		if "`total2'" != "" {
+			local vars ""
+			foreach g in `total2' {
+				local vars "`vars' net`g'"
+			}
+			egen nettotal2 = rowtotal(`vars'), missing
+		}
 
 	* x axis as a running day index, so the excluded window collapses to a small gap
 		gen t = _n
@@ -105,6 +114,7 @@
 		local label_mfi_nonea    "Non-EA MFIs"
 		local label_ofi_nonea    "Non-EA OFIs"
 		local label_ucits        "UCITS"
+		local label_icpf         "Insurers and pension funds"
 		local lines ""
 		local legend ""
 		local k = 0
@@ -115,9 +125,16 @@
 		}
 		local ++k
 		if "`total'" == "`groups'" local label_total "Combined"
-		else                       local label_total "Combined excl. UCITS"
-		twoway `lines' (line nettotal t, cmissing(n) lcolor(black) lwidth(medthick)), ///
-			legend(order(`legend' `k' "`label_total'") rows(2) position(6)) ///
+		else                       local label_total "Combined excl. UCITS and ICPF"
+		local legend `"`legend' `k' "`label_total'""'
+		local lines2 ""
+		if "`total2'" != "" {
+			local ++k
+			local lines2 `"(line nettotal2 t, cmissing(n) lcolor(black) lwidth(medthick) lpattern(dash))"'
+			local legend `"`legend' `k' "Combined UCITS and ICPF""'
+		}
+		twoway `lines' (line nettotal t, cmissing(n) lcolor(black) lwidth(medthick)) `lines2', ///
+			legend(order(`legend') rows(3) position(6)) ///
 			ytitle("Net position, `ccy' bn") xtitle("") yline(0, lcolor(gs10)) ///
 			xlabel(`xlab') xline(`gap_start' `gap_end', lpattern(dash) lcolor(gs8)) ///
 			title("Net positions in `name'")
@@ -139,4 +156,14 @@
 	foreach c in DE IT US {
 		plot_net `c', groups(hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea ucits) ///
 					  total(hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea) suffix("_ucits")
+	}
+
+*------------------------------------------------------------------------------
+* 3. Same, plus UCITS and insurers and pension funds, with a second combined line
+*------------------------------------------------------------------------------
+
+	foreach c in DE IT US {
+		plot_net `c', groups(hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea ucits icpf) ///
+					  total(hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea) ///
+					  total2(ucits icpf) suffix("_ucits_icpf")
 	}
