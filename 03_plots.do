@@ -7,11 +7,14 @@
 	global dsn  "Hermes_DSN"
 
 *------------------------------------------------------------------------------
-* 1. Net positions by country: EA and non EA hedge funds, non euro area dealers,
-*    MFIs and OFIs. One chart per country (DE, IT, US).
+* Program: net position chart for one country and a list of sector groups
+*   groups: hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea ucits
+*   usage:  plot_net DE, groups(hf_ea hf_nonea dealer_nonea) suffix(_base)
 *------------------------------------------------------------------------------
 
-	foreach c in DE IT US {
+	capture program drop plot_net
+	program define plot_net
+		syntax anything(name=c), groups(string) suffix(string)
 
 		if "`c'" == "US" local ccy "USD"
 		else             local ccy "EUR"
@@ -32,7 +35,7 @@
 				FROM lab_prj_emir_ecb.hermesf_fut
 				WHERE product_country = '`c''
 			) x
-			WHERE sector IN ('HF', 'DEALER', 'MFI', 'OFI')
+			WHERE sector IN ('HF', 'DEALER', 'MFI', 'OFI', 'UCITS')
 			GROUP BY reference_period, sector, country
 		") ;
 		#delimit cr
@@ -48,18 +51,19 @@
 				 | (country == "HR" & date >= td(01jan2023)) ///
 				 | (country == "BG" & date >= td(01jan2026))
 
-	* groups to plot
+	* sector groups
 		gen group = ""
 		replace group = "hf_ea"        if sector == "HF"     &  isea
 		replace group = "hf_nonea"     if sector == "HF"     & !isea
 		replace group = "dealer_nonea" if sector == "DEALER" & !isea
 		replace group = "mfi_nonea"    if sector == "MFI"    & !isea
 		replace group = "ofi_nonea"    if sector == "OFI"    & !isea
+		replace group = "ucits"        if sector == "UCITS"
 		drop if group == ""
 
 		collapse (sum) net, by(date group)
 		reshape wide net, i(date) j(group) string
-		foreach g in hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea {
+		foreach g in `groups' {
 			capture confirm variable net`g'
 			if _rc gen net`g' = .
 		}
@@ -72,8 +76,12 @@
 		replace date = td(01jul2024) + _n - `n0' if _n > `n0'
 		sort date
 
-	* combined line of the five groups
-		egen nettotal = rowtotal(nethf_ea nethf_nonea netdealer_nonea netmfi_nonea netofi_nonea), missing
+	* combined line of the plotted groups
+		local vars ""
+		foreach g in `groups' {
+			local vars "`vars' net`g'"
+		}
+		egen nettotal = rowtotal(`vars'), missing
 
 	* x axis as a running day index, so the excluded window collapses to a small gap
 		gen t = _n
@@ -89,15 +97,41 @@
 		local gap_end = r(min)
 
 	* plot, dashed vertical lines mark the excluded REFIT transition window
-		twoway (line nethf_ea        t, cmissing(n)) ///
-			   (line nethf_nonea     t, cmissing(n)) ///
-			   (line netdealer_nonea t, cmissing(n)) ///
-			   (line netmfi_nonea    t, cmissing(n)) ///
-			   (line netofi_nonea    t, cmissing(n)) ///
-			   (line nettotal        t, cmissing(n) lcolor(black) lwidth(medthick)), ///
-			legend(order(1 "EA hedge funds" 2 "Non-EA hedge funds" 3 "Non-EA dealers" 4 "Non-EA MFIs" 5 "Non-EA OFIs" 6 "Combined") rows(2) position(6)) ///
+		local label_hf_ea        "EA hedge funds"
+		local label_hf_nonea     "Non-EA hedge funds"
+		local label_dealer_nonea "Non-EA dealers"
+		local label_mfi_nonea    "Non-EA MFIs"
+		local label_ofi_nonea    "Non-EA OFIs"
+		local label_ucits        "UCITS"
+		local lines ""
+		local legend ""
+		local k = 0
+		foreach g in `groups' {
+			local ++k
+			local lines  `"`lines' (line net`g' t, cmissing(n))"'
+			local legend `"`legend' `k' "`label_`g''""'
+		}
+		local ++k
+		twoway `lines' (line nettotal t, cmissing(n) lcolor(black) lwidth(medthick)), ///
+			legend(order(`legend' `k' "Combined") rows(2) position(6)) ///
 			ytitle("Net position, `ccy' bn") xtitle("") yline(0, lcolor(gs10)) ///
 			xlabel(`xlab') xline(`gap_start' `gap_end', lpattern(dash) lcolor(gs8)) ///
 			title("Net positions in `name'")
-		graph export "${path}\net_positions_`=lower("`c'")'.png", replace width(1600)
+		graph export "${path}\net_positions_`=lower("`c'")'`suffix'.png", replace width(1600)
+	end
+
+*------------------------------------------------------------------------------
+* 1. Hedge funds (EA, non EA), non EA dealers, MFIs and OFIs
+*------------------------------------------------------------------------------
+
+	foreach c in DE IT US {
+		plot_net `c', groups(hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea) suffix("")
+	}
+
+*------------------------------------------------------------------------------
+* 2. Same, plus UCITS
+*------------------------------------------------------------------------------
+
+	foreach c in DE IT US {
+		plot_net `c', groups(hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea ucits) suffix("_ucits")
 	}
