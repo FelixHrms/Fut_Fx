@@ -14,7 +14,7 @@
 
 	capture program drop plot_net
 	program define plot_net
-		syntax anything(name=c), groups(string) suffix(string)
+		syntax anything(name=c), groups(string) [suffix(string)]
 
 		if "`c'" == "US" local ccy "USD"
 		else             local ccy "EUR"
@@ -125,7 +125,7 @@
 *------------------------------------------------------------------------------
 
 	foreach c in DE IT US {
-		plot_net `c', groups(hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea) suffix("")
+		plot_net `c', groups(hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea) 
 	}
 
 *------------------------------------------------------------------------------
