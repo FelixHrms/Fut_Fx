@@ -55,12 +55,17 @@
 	replace date = td(01jul2024) in L
 	sort date
 
-* plot
+* combined line of the four groups
+	egen nettotal = rowtotal(nethf netdealer_nonea netmfi_nonea netofi_nonea), missing
+
+* plot, dashed vertical lines mark the excluded REFIT transition window
 	twoway (line nethf           date, cmissing(n)) ///
 		   (line netdealer_nonea date, cmissing(n)) ///
 		   (line netmfi_nonea    date, cmissing(n)) ///
-		   (line netofi_nonea    date, cmissing(n)), ///
-		legend(order(1 "Hedge funds" 2 "Non-EA dealers" 3 "Non-EA MFIs" 4 "Non-EA OFIs") rows(1) position(6)) ///
+		   (line netofi_nonea    date, cmissing(n)) ///
+		   (line nettotal        date, cmissing(n) lcolor(black) lwidth(medthick)), ///
+		legend(order(1 "Hedge funds" 2 "Non-EA dealers" 3 "Non-EA MFIs" 4 "Non-EA OFIs" 5 "Combined") rows(1) position(6)) ///
 		ytitle("Net position, EUR bn") xtitle("") yline(0, lcolor(gs10)) ///
+		xline(`=td(29apr2024)' `=td(31dec2024)', lpattern(dash) lcolor(gs8)) ///
 		title("Net positions in German sovereign bond futures")
 	graph export "${path}\net_positions_de.png", replace width(1600)
