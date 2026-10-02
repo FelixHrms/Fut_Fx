@@ -50,9 +50,12 @@
 	collapse (sum) net, by(date group)
 	reshape wide net, i(date) j(group) string
 
-* one empty day inside the excluded REFIT transition window, so the lines break there
-	set obs `=_N + 1'
-	replace date = td(01jul2024) in L
+* a few empty days inside the excluded REFIT transition window, so the lines break there
+* and the break shows as a small gap on the index axis
+	local gap_days = 20
+	local n0 = _N
+	set obs `=_N + `gap_days''
+	replace date = td(01jul2024) + _n - `n0' if _n > `n0'
 	sort date
 
 * combined line of the four groups
