@@ -10,6 +10,7 @@ Build a clean dataset of euro area (and eventually US) sovereign bond futures fr
 - `01_gov_futures_list.do`: builds `gov_fut.csv` (ISIN, country, expiration date of the euro area contracts)
 - `02_creating_table.ipynb`: builds the DEVO table `lab_prj_emir_ecb.hermesf_fut`, cleaning applied inside the queries
 - `cleaning_decisions.txt`: brief record of the scope and cleaning decisions
+- `03_plot_net_positions_de.do`: plots net positions in German futures by selected sector groups
 
 ## Local setup
 The user's local folder is `C:\Users\hermesf\Projects\Future_FX_cleaning`.
