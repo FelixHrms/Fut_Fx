@@ -52,7 +52,7 @@
 
 * a few empty days inside the excluded REFIT transition window, so the lines break there
 * and the break shows as a small gap on the index axis
-	local gap_days = 20
+	local gap_days = 35
 	local n0 = _N
 	set obs `=_N + `gap_days''
 	replace date = td(01jul2024) + _n - `n0' if _n > `n0'
