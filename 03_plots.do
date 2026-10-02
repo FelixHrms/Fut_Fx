@@ -58,14 +58,27 @@
 * combined line of the four groups
 	egen nettotal = rowtotal(nethf netdealer_nonea netmfi_nonea netofi_nonea), missing
 
+* x axis as a running day index, so the excluded window collapses to a single step
+	gen t = _n
+	gen yr = year(date)
+	bys yr (date): gen first = _n == 1
+	local xlab ""
+	forvalues i = 1/`=_N' {
+		if first[`i'] local xlab `"`xlab' `i' "`=yr[`i']'""'
+	}
+	summ t if date < td(29apr2024), meanonly
+	local gap_start = r(max)
+	summ t if date >= td(01jan2025), meanonly
+	local gap_end = r(min)
+
 * plot, dashed vertical lines mark the excluded REFIT transition window
-	twoway (line nethf           date, cmissing(n)) ///
-		   (line netdealer_nonea date, cmissing(n)) ///
-		   (line netmfi_nonea    date, cmissing(n)) ///
-		   (line netofi_nonea    date, cmissing(n)) ///
-		   (line nettotal        date, cmissing(n) lcolor(black) lwidth(medthick)), ///
+	twoway (line nethf           t, cmissing(n)) ///
+		   (line netdealer_nonea t, cmissing(n)) ///
+		   (line netmfi_nonea    t, cmissing(n)) ///
+		   (line netofi_nonea    t, cmissing(n)) ///
+		   (line nettotal        t, cmissing(n) lcolor(black) lwidth(medthick)), ///
 		legend(order(1 "Hedge funds" 2 "Non-EA dealers" 3 "Non-EA MFIs" 4 "Non-EA OFIs" 5 "Combined") rows(1) position(6)) ///
 		ytitle("Net position, EUR bn") xtitle("") yline(0, lcolor(gs10)) ///
-		xline(`=td(29apr2024)' `=td(31dec2024)', lpattern(dash) lcolor(gs8)) ///
+		xlabel(`xlab') xline(`gap_start' `gap_end', lpattern(dash) lcolor(gs8)) ///
 		title("Net positions in German sovereign bond futures")
 	graph export "${path}\net_positions_de.png", replace width(1600)
