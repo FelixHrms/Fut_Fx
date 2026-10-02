@@ -7,6 +7,9 @@ Build a clean dataset of euro area (and eventually US) sovereign bond futures fr
 - `ESMA_guidelines.pdf`: ESMA reporting guidelines for EMIR
 - `emir_futures.do`: Stata do file from a colleague with a first pass at cleaning the data
 - `eurex_sovereign_futures_contracts.xlsx`: Excel file with ISINs for the futures
+- `01_gov_futures_list.do`: builds `gov_fut.csv` (ISIN, country, expiration date of the euro area contracts)
+- `02_creating_table.ipynb`: builds the DEVO tables `lab_prj_emir_ecb.hermesf_fut` (raw) and `hermesf_fut_clean`
+- `03_diagnostics.ipynb`: checks used while developing the cleaning rules
 
 ## Local setup
 The user's local folder is `C:\Users\hermesf\Projects\Future_FX_cleaning`.
