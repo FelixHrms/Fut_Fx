@@ -9,12 +9,14 @@
 *------------------------------------------------------------------------------
 * Program: net position chart for one country and a list of sector groups
 *   groups: hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea ucits
-*   usage:  plot_net DE, groups(hf_ea hf_nonea dealer_nonea) suffix(_base)
+*   total:  groups summed into the combined line (default: all plotted groups)
+*   usage:  plot_net DE, groups(hf_ea hf_nonea ucits) total(hf_ea hf_nonea) suffix(_x)
 *------------------------------------------------------------------------------
 
 	capture program drop plot_net
 	program define plot_net
-		syntax anything(name=c), groups(string) [suffix(string)]
+		syntax anything(name=c), groups(string) [total(string) suffix(string)]
+		if "`total'" == "" local total "`groups'"
 
 		if "`c'" == "US" local ccy "USD"
 		else             local ccy "EUR"
@@ -76,9 +78,9 @@
 		replace date = td(01jul2024) + _n - `n0' if _n > `n0'
 		sort date
 
-	* combined line of the plotted groups
+	* combined line
 		local vars ""
-		foreach g in `groups' {
+		foreach g in `total' {
 			local vars "`vars' net`g'"
 		}
 		egen nettotal = rowtotal(`vars'), missing
@@ -112,8 +114,10 @@
 			local legend `"`legend' `k' "`label_`g''""'
 		}
 		local ++k
+		if "`total'" == "`groups'" local label_total "Combined"
+		else                       local label_total "Combined excl. UCITS"
 		twoway `lines' (line nettotal t, cmissing(n) lcolor(black) lwidth(medthick)), ///
-			legend(order(`legend' `k' "Combined") rows(2) position(6)) ///
+			legend(order(`legend' `k' "`label_total'") rows(2) position(6)) ///
 			ytitle("Net position, `ccy' bn") xtitle("") yline(0, lcolor(gs10)) ///
 			xlabel(`xlab') xline(`gap_start' `gap_end', lpattern(dash) lcolor(gs8)) ///
 			title("Net positions in `name'")
@@ -133,5 +137,6 @@
 *------------------------------------------------------------------------------
 
 	foreach c in DE IT US {
-		plot_net `c', groups(hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea ucits) suffix("_ucits")
+		plot_net `c', groups(hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea ucits) ///
+					  total(hf_ea hf_nonea dealer_nonea mfi_nonea ofi_nonea) suffix("_ucits")
 	}
